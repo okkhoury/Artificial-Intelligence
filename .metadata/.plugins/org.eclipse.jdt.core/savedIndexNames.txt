@@ -1,0 +1,5 @@
+INDEX VERSION 1.129+C:\Users\Owen\Artificial_Intelligence\.metadata\.plugins\org.eclipse.jdt.core
+2486966779.index
+2050128087.index
+173575256.index
+3812305261.index

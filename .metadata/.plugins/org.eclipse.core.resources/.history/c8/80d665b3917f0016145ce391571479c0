@@ -1,0 +1,487 @@
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+//import java.util.Map;
+import java.util.Scanner;
+import java.util.Stack;
+
+public class Expert_System {
+	
+	static Map<String, String> rootVars = new HashMap<String, String>();
+	static Map<String, String> learnedVars = new HashMap<String, String>();
+	
+	// These arraylist just keep the order in which variable are learned
+	static ArrayList<String> rootVarsOrder = new ArrayList<String>();
+	static ArrayList<String> learnedVarsOrder = new ArrayList<String>();
+	
+	static ArrayList<String> rules = new ArrayList<String>();
+	static ArrayList<String> facts = new ArrayList<String>();
+	
+	
+	// Associativity constants for operators
+    private static final int LEFT_ASSOC  = 0;
+    private static final int RIGHT_ASSOC = 1;
+  
+    // Operators
+    private static final Map<String, int[]> OPERATORS = new HashMap<String, int[]>();
+    static
+    {
+        // Map<"token", []{precendence, associativity}>
+        OPERATORS.put("&", new int[] { 5, LEFT_ASSOC });
+        OPERATORS.put("|", new int[] { 0, LEFT_ASSOC });       
+    }
+
+	public static void main(String[] args) {
+		Scanner scanner = new Scanner(System.in);
+		String command = scanner.nextLine();
+		
+		while (!command.equals("-1")) {
+
+			// Parse the 3 different teach commands
+			if (command.contains("Teach")) {
+				if (command.contains("-L") || command.contains("-R")) { // 1st teach command													
+					String[] partsOfCom = command.split(" ");
+					String arg = partsOfCom[1];
+					String var = partsOfCom[2];
+					String varDef = command.substring(command.indexOf("=") + 3, command.length()-1);
+					teach1(arg, var, varDef);
+					
+				} else if (command.contains("->")) {					// 3rd teach command
+					String[] partsOfCom = command.split(" ");
+					String exp = partsOfCom[1];
+					String var = partsOfCom[3];
+					teach3(exp, var);
+				} else {												// 2nd teach command
+					String[] partsOfCom = command.split(" ");
+					String var = partsOfCom[1];
+					boolean tf = (command.contains("true")) ? true : false;
+					teach2(var, tf);
+				}
+			} else if (command.contains("List")) {
+				list();
+			} else if (command.contains("Learn")) {
+				learn();
+			} else if (command.contains("Query")) {
+				String query = command.substring(6, command.length()-1);
+				query(query);
+			} else if (command.contains("Why")) {
+				String y = command.substring(4);
+				why(y);
+			}
+			command = scanner.nextLine();
+		}
+	}
+	
+	
+	public static void teach1 (String arg, String var, String varDef) {
+		String putTogether = var + " = " + "\"" + varDef + "\"";
+		if (arg.equals("-R")) {
+			rootVarsOrder.add(putTogether);
+			rootVars.put(var, varDef);
+		} else {
+			learnedVarsOrder.add(putTogether);
+			learnedVars.put(var, varDef);
+		}
+		
+		facts.add("!" + var);
+		
+	}
+	
+	public static void teach2(String rootVar, boolean tf) {
+
+		if (rootVars.containsKey(rootVar) && facts.contains(rootVar) && tf == false) {
+
+			facts.remove(rootVar);
+			facts.add("!" + rootVar);
+			
+			setLearnedVarsFalse();
+
+		} else if (rootVars.containsKey(rootVar) && facts.contains("!" + rootVar) && tf == true) {
+			String tempfix = "!" + rootVar;
+			facts.remove(tempfix);
+			facts.add(rootVar);
+			
+			setLearnedVarsFalse();
+			
+		} else if ((rootVars.containsKey(rootVar) && facts.contains("!" + rootVar) && tf == false) || 
+				(rootVars.containsKey(rootVar) && facts.contains(rootVar) && tf == true)) {
+			// Do nothing
+		} else {
+			if (rootVars.containsKey(rootVar) && tf) {
+				facts.add(rootVar);
+			} else if (rootVars.containsKey(rootVar) && !tf) {
+				facts.add("!" + rootVar);
+			}
+		}
+	}
+	
+	public static void setLearnedVarsFalse() {
+		/*
+		 * Go through every fact. check if it is a learned var. make all learned
+		 * vars false
+		 */
+		
+		for (int i = 0; i < facts.size(); i++) {
+			if (learnedVars.containsKey(facts.get(i))) {
+				String temp = facts.get(i);
+				if (!temp.contains("!"))
+					facts.set(i, "!" + temp);
+			}
+		}
+	}
+	
+	public static void teach3 (String expr, String var) {
+		// var must be a learned variable
+		// expr can be a combination of learned and root vars
+		rules.add(expr + " -> " + var);
+	}
+	
+	public static void learn() {
+		// Go through all of the rules. parse the rules. determine new facts
+		// based on existing facts
+
+		setLearnedVarsFalse();
+
+		for (String rule : rules) {
+			String[] partOfRule = rule.split(" ");
+			String ifPart = partOfRule[0];
+			String thenPart = partOfRule[2];
+
+			String[] result = infixToRPN(addSpacesToString(ifPart).split(" "));
+			int ans = Integer.parseInt(logicVal(result));
+
+			if (ans == 1 && facts.contains("!" + thenPart)) {
+				facts.remove("!" + thenPart);
+				facts.add(thenPart);
+			} else if (ans == 1 && !facts.contains(thenPart)) {
+				facts.add(thenPart);
+				
+			}
+		}
+	}
+	
+	/*
+	 *  Adds spaces into the passed in string, so that it can be passed into the postfix parser
+	 */
+	public static String addSpacesToString(String ifPart) {
+		String newIfPart = "";
+		
+		//Add spaces around parenthesis and any predicate logic symbols
+		for (int i = 0; i < ifPart.length(); i++) {
+			if (ifPart.charAt(i) == ')' || ifPart.charAt(i) == '(' || ifPart.charAt(i) == '&'
+					|| ifPart.charAt(i) == '|') {
+				newIfPart += " " + ifPart.charAt(i) + " ";
+			} else {
+				newIfPart += ifPart.charAt(i);
+			}
+		}
+
+		StringBuilder y = new StringBuilder();
+		y.append(newIfPart.replaceAll("\\s+", " "));
+		if (y.charAt(0) == ' ') {
+			y.deleteCharAt(0);
+		}
+
+		if (y.charAt(y.length() - 1) == ' ') {
+			y.deleteCharAt(y.length() - 1);
+		}
+
+		return y.toString();
+	}
+	
+	/*
+	 * Determine the truth value of the expression passed in. Use backwards chaining if necessary
+	 */
+	public static void query (String expr) {
+		String[] result = infixToRPN(addSpacesToString(expr).split(" "));
+		//System.out.println(Arrays.toString(result));
+		System.out.println(logicVal2(result));
+	}
+	
+	/*
+	 * Recursively go backwards through the rules until you determine the truth value of var
+	 */
+	public static String backwardChaining (String var) {
+		if (facts.contains(var)) {
+			return "1";
+		} else {
+			for (int i = 0; i < rules.size(); i++) {
+				String[] partOfRule = rules.get(i).split(" ");
+				String ifPart = partOfRule[0];
+				String thenPart = partOfRule[2];
+				
+				if (var.equals(thenPart)) {
+					String[] result = infixToRPN(addSpacesToString(ifPart).split(" "));
+					System.out.println(Arrays.toString(result));
+					return logicVal2(result);
+				}
+			}
+		}
+		
+		return "0";
+	}
+	
+	public static void why (String expr) {
+		
+	}
+	
+	
+	public static void list() {
+		System.out.println("Root Variables:");
+		for (String rvar : rootVarsOrder) {
+			System.out.println("\t" + rvar);
+		}
+		System.out.println();
+
+		System.out.println("Learned Variables:");
+		for (String lvar : learnedVarsOrder) {
+			System.out.println("\t" + lvar);
+		}
+		System.out.println();
+
+		System.out.println("Facts:");
+		for (String fact : facts) {
+			System.out.println("\t" + fact);
+		}
+		System.out.println();
+
+		System.out.println("Rules:");
+		for (String rulez : rules) {
+			System.out.println("\t" + rulez);
+		}
+		System.out.println();
+	}
+	
+	
+	
+	// parsing expressions code
+	
+	
+	/*
+	 * The logic if (of the if -> then statement) is passed in to function in posfix notation
+	 * Go through and evaluate the truth value of the entire expression. If any variable is unknown,
+	 * recursively apply backward chaining to determine its truth value
+	 */
+	public static String logicVal2(String[] tokens) {
+		Stack<String> stack = new Stack<String>();
+		
+		if (tokens.length == 1) {
+			if (facts.contains(tokens[0])) {
+				//System.out.println(tokens[0]);
+				return "1";
+			} else {
+				//System.out.println("bc: " + tokens[0]);
+				return backwardChaining(tokens[0]);
+			}
+		}
+
+		// For each token
+		for (String token : tokens) {
+			// If the token is a value push it onto the stack
+			if (!isOperator(token)) {
+				stack.push(token);
+//				if (facts.contains(token)) {
+//					System.out.println(token);
+//					return "1";
+//				} else {
+//					System.out.println(token);
+//					return backwardChaining(token);
+//				}
+			} else {
+				// Token is an operator: pop top two entries
+				String d2 = stack.pop();
+				String d1 = stack.pop();
+				
+//				System.out.println();
+//				System.out.println(d2);
+//				System.out.println(d1);
+//				System.out.println(token);
+//				System.out.println();
+				
+				String val1;
+				String val2;
+				
+				if (facts.contains(d2) || d2.equals("1")) {
+					val2 = "1";
+				} else if (d2.equals("0")) {
+					val2 = "0";
+				} else {
+					val2 = backwardChaining(d2);
+				}
+				
+				if (facts.contains(d1) || d1.equals("1")) {
+					val1 = "1";
+				} else if (d1.equals("0")) {
+					val1 = "0";
+				} else {
+					val1 = backwardChaining(d1);
+				}
+				
+//				System.out.println(val2);
+//				System.out.println(val1);
+				
+				
+				// Get the result
+				int result = token.compareTo("&") == 0 ? Integer.parseInt(val1) & Integer.parseInt(val2)
+						: token.compareTo("|") == 0 ? Integer.parseInt(val1) | Integer.parseInt(val2) : 0;
+				
+//				System.out.println(result);
+//				System.out.println();
+
+				// Push result onto stack
+				stack.push(Integer.toString(result));
+//				System.out.println(stack);
+//				System.out.println();
+//				System.out.println();
+				
+			}
+		}
+		return stack.pop();
+	}
+	
+	
+	public static String logicVal(String[] tokens) {
+		Stack<String> stack = new Stack<String>();
+
+		// For each token
+		for (String token : tokens) {
+			// If the token is a value push it onto the stack
+			if (!isOperator(token)) {
+				stack.push(token);
+			} else {
+				// Token is an operator: pop top two entries
+				String d2 = stack.pop();
+				String d1 = stack.pop();
+				
+//				System.out.println(d2);
+//				System.out.println(d1);
+//				System.out.println(token);
+//				System.out.println();
+				
+				int val1;
+				int val2;
+				
+				if (facts.contains(d2) || d2.equals("1")) {
+					val2 = 1;
+				} else {
+					val2 = 0;
+				}
+				
+				if (facts.contains(d1) || d1.equals("1")) {
+					val1 = 1;
+				} else {
+					val1 = 0;
+				}
+				
+//				System.out.println(val2);
+//				System.out.println(val1);
+				
+				// Get the result
+				int result = token.compareTo("&") == 0 ? val1 & val2
+						: token.compareTo("|") == 0 ? val1 | val2 : 0;
+				
+//				System.out.println(result);
+//				System.out.println();
+
+				// Push result onto stack
+				stack.push(Integer.toString(result));
+//				System.out.println(stack);
+//				System.out.println();
+//				System.out.println();
+				
+			}
+		}
+		return stack.pop();
+	}
+	
+	
+	// Test if token is an operator
+    private static boolean isOperator(String token) 
+    {
+        return OPERATORS.containsKey(token);
+    }
+  
+    // Test associativity of operator token
+    private static boolean isAssociative(String token, int type) 
+    {
+        if (!isOperator(token)) 
+        {
+            throw new IllegalArgumentException("Invalid token: " + token);
+        }
+         
+        if (OPERATORS.get(token)[1] == type) {
+            return true;
+        }
+        return false;
+    }
+  
+    // Compare precedence of operators.    
+    private static final int cmpPrecedence(String token1, String token2) 
+    {
+        if (!isOperator(token1) || !isOperator(token2)) 
+        {
+            throw new IllegalArgumentException("Invalid tokens: " + token1
+                    + " " + token2);
+        }
+        return OPERATORS.get(token1)[0] - OPERATORS.get(token2)[0];
+    }
+  
+    // Convert infix expression format into reverse Polish notation
+    public static String[] infixToRPN(String[] inputTokens) 
+    {
+        ArrayList<String> out = new ArrayList<String>();
+        Stack<String> stack = new Stack<String>();
+         
+        // For each token
+        for (String token : inputTokens) 
+        {
+            // If token is an operator
+            if (isOperator(token)) 
+            {  
+                // While stack not empty AND stack top element 
+                // is an operator
+                while (!stack.empty() && isOperator(stack.peek())) 
+                {                    
+                    if ((isAssociative(token, LEFT_ASSOC)         && 
+                         cmpPrecedence(token, stack.peek()) <= 0) || 
+                        (isAssociative(token, RIGHT_ASSOC)        && 
+                         cmpPrecedence(token, stack.peek()) < 0)) 
+                    {
+                        out.add(stack.pop());   
+                        continue;
+                    }
+                    break;
+                }
+                // Push the new operator on the stack
+                stack.push(token);
+            } 
+            // If token is a left bracket '('
+            else if (token.equals("(")) 
+            {
+                stack.push(token);  // 
+            } 
+            // If token is a right bracket ')'
+            else if (token.equals(")")) 
+            {                
+                while (!stack.empty() && !stack.peek().equals("(")) 
+                {
+                    out.add(stack.pop()); 
+                }
+                stack.pop(); 
+            } 
+            // If token is a number
+            else
+            {
+                out.add(token); 
+            }
+        }
+        while (!stack.empty())
+        {
+            out.add(stack.pop()); 
+        }
+        String[] output = new String[out.size()];
+        return out.toArray(output);
+    }
+
+}
