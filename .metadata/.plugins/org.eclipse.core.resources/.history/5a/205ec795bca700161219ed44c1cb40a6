@@ -1,0 +1,54 @@
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+public class MachineLearning_Regression {
+
+	static Map<String, Integer> ingredients = new HashMap<String, Integer>();
+	static int indexCounter = 0;
+
+	public static void main(String[] args) {
+		populateIngredientsMap();
+		System.out.println(ingredients.toString());
+
+	}
+	
+	
+	
+	
+	public static void populateIngredientsMap() {
+		String csvFile = "../HW4/src/testing.txt";
+		BufferedReader br = null;
+		String line = "";
+
+		try {
+
+			br = new BufferedReader(new FileReader(csvFile));
+			while ((line = br.readLine()) != null) {
+				
+				String ingr = line;
+				if (!ingredients.containsKey(ingr)) {
+					ingredients.put(ingr, indexCounter);
+					indexCounter++;
+				}
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+}
+

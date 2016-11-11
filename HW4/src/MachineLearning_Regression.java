@@ -4,37 +4,115 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import Jama.*;
 
 public class MachineLearning_Regression {
 
 	static Map<String, Integer> ingredients = new HashMap<String, Integer>();
 	static int indexCounter = 0;
+	
+	// Rows = 5/6 of total data. This is the training set. the remaining is used for testing
+	// Columns = # of features (ingredients)
+	static int trainingRows = 1495;
+	static int ingrNum = 2398;
+	static int[][] features = new int[trainingRows][ingrNum];
+	
+	// bounds for the testing set
+	static int lowTestBound = 1495;
+	static int highTestBound= 1794;
 
 	public static void main(String[] args) {
+		// Run through ingredients and store them in a hashmap
 		populateIngredientsMap();
-
+		
+		// Initialize features matrix to all zeroes
+		initMatrixZero();
+		
+		// Run through recipes and set up values in features matrix
+		initFeaturesMatrix();
+		
+		for (int row = 0; row < 100; row++) {
+			for (int col = 0; col < 1000; col++) {
+				//features[row][col] = 0;
+				System.out.print(features[row][col] + " ");
+			}
+			System.out.println();
+		}
+		
+		
 	}
 	
 	
 	
-	
-	public static void populateIngredientsMap() {
+	public static void initFeaturesMatrix() {
 		String csvFile = "../HW4/src/training.csv";
+		BufferedReader br = null;
+		String line = "";
+		
+		int rowCounter = 0;
+
+		/*
+		 *  If the hashmap contains the current ingredient, then look up where the index of that ingredient by doing
+		 *  hashmap.get(ingredient) (return index) and set that index in the features matrix to 1. Each row corresponds
+		 *  to a recipe, 1 = contains ingredient, 0 = doesn't contain ingredient. go row by row. 
+		 */
+		try {
+			br = new BufferedReader(new FileReader(csvFile));
+			while ((line = br.readLine()) != null) {
+				if (rowCounter >= lowTestBound && rowCounter < highTestBound) {
+					// This is where we'll do stuff with the testing data
+				} else {
+					String[] recipes = line.split(",");
+					for (String ingr : recipes) {
+						if (ingredients.containsKey(ingr)) {
+							int index = ingredients.get(ingr);
+							//System.out.println("row: " + rowCounter + ", col: " + index);
+							features[rowCounter][index] = 1;
+						}
+					}
+				}
+
+				rowCounter++;
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+	}
+	
+	public static void initMatrixZero() {
+		// init matrix to all zeroes
+		for (int row = 0; row < trainingRows; row++) {
+			for (int col = 0; col < ingrNum; col++) {
+				features[row][col] = 0;
+			}
+		}
+	}
+	
+
+	public static void populateIngredientsMap() {
+		String csvFile = "../HW4/src/ingredients.txt";
 		BufferedReader br = null;
 		String line = "";
 
 		try {
-
 			br = new BufferedReader(new FileReader(csvFile));
 			while ((line = br.readLine()) != null) {
-
-				// First pass through training set: Put every ingredient into an arraylist
-				String[] recipe = line.split(",");
-				for (int i = 2; i < recipe.length; i++) {
-					if (!ingredients.containsKey(recipe[i])) {
-						ingredients.put(recipe[i], indexCounter);
-						indexCounter++;
-					}
+				
+				String ingr = line;
+				if (!ingredients.containsKey(ingr)) {
+					ingredients.put(ingr, indexCounter);
+					indexCounter++;
 				}
 			}
 		} catch (FileNotFoundException e) {
@@ -51,6 +129,8 @@ public class MachineLearning_Regression {
 			}
 		}
 	}
+	
+	
 
 }
 

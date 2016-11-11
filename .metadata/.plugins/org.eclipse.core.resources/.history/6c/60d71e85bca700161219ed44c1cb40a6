@@ -1,0 +1,11 @@
+package snippet;
+
+public class Snippet {
+	public static void main(String[] args) {
+		if (!ingredients.containsKey(recipe[i])) {
+								ingredients.put(recipe[i], indexCounter);
+								indexCounter++;
+							}
+	}
+}
+
