@@ -11,6 +11,8 @@ import java.util.Random;
 import Jama.Matrix;
 
 public class MachineLearning_NeuralNetwork {
+	
+	static double totalError = 0;
 
 	static Map<String, Integer> ingredients = new HashMap<String, Integer>();
 	static Map<String, Integer> cuisines = new HashMap<String, Integer>();
@@ -19,17 +21,20 @@ public class MachineLearning_NeuralNetwork {
 	// Rows = 5/6 of total data. This is the training set. the remaining is used for testing
 	// Columns = # of features (ingredients)
 	static int trainingRows = 1495;
+	static int testingRows = 299;
 	static int ingrNum = 2398;
 	static int numPerceptrons = 10;
 	static double learningRate = 0.09;
 	
 	static double[][] features = new double[trainingRows][ingrNum];
+	static double[][] testing = new double[testingRows][ingrNum];
 	static ArrayList<Perceptron> hiddenLayer = new ArrayList<Perceptron>();
 	static ArrayList<OutputNode> outputLayer = new ArrayList<OutputNode>();	// Each output is a cuisine
 	static double[] sigmoidOutputs = new double[numPerceptrons];
 	
 	// This array holds the type of cuisine for each row of our features matrix
 	static String[] rowCuisines = new String[trainingRows];	
+	static String[] testCuisines = new String[testingRows];
 	
 	// bounds for the testing set
 	static int lowTestBound = 1495;
@@ -39,7 +44,7 @@ public class MachineLearning_NeuralNetwork {
 		// Run through ingredients and store them in a hashmap
 		populateIngredientsMap();
 		
-		// Initialize features matrix to all zeroes
+		// Initialize features and testing matrix to all zeroes
 		initMatrixZero();
 		
 		// Run through recipes and set up values in features matrix (1 if contains ingr, 0 otherwise)
@@ -92,7 +97,6 @@ public class MachineLearning_NeuralNetwork {
 			}
 			
 			
-			
 			//Put correct cuisine value into correctOutput as 0.9
 			correctOutput[cuisines.get(rowCuisines[i])] = 0.9;
 			
@@ -105,21 +109,18 @@ public class MachineLearning_NeuralNetwork {
 			//Now we are updating the weights for the output layer
 			for(int c = 0; c < 20; c++) {
 				for(int j = 0; j < numPerceptrons; j++) {
-					outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
+					outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + 
+							outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
 				}
 			}
 			
 			//Now we are updating the weights for the hidden layer
 			for(int h = 0; h < numPerceptrons; h++) {
 				for(int j = 0; j < ingrNum; j++) {
-					hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + hiddenLayer.get(h).delta * learningRate * features[i][j];
+					hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + 
+							hiddenLayer.get(h).delta * learningRate * features[i][j];
 				}
 			}
-			
-			
-			
-			
-			
 			
 			// System.out.println(Arrays.deepToString(testRecipe.getArray()));
 		}
@@ -131,8 +132,13 @@ public class MachineLearning_NeuralNetwork {
 	public static void calculateOutputDeltas(double[] correctOutput) {
 		for(int c = 0; c < 20; c++) {
 			double Ok = outputLayer.get(c).output;
+			// ERROR CALCULATION
+			totalError +=  Math.pow(correctOutput[c] - Ok, 2);
 			outputLayer.get(c).delta = Ok * (1-Ok) * (correctOutput[c] - Ok);
 		}
+		
+		totalError /= 20;
+		System.out.println("Output Error: " + totalError);
 	}
 	
 	public static void calculateHiddenDeltas() {
@@ -169,6 +175,10 @@ public class MachineLearning_NeuralNetwork {
 		
 		int rowCounter = 0;
 		int cuisineCounter = 0;
+		int testingCounter = 0;
+		
+		Random random = new Random();
+		int randomNum = 0;
 
 		/*
 		 *  If the hashmap contains the current ingredient, then look up where the index of that ingredient by doing
@@ -178,8 +188,21 @@ public class MachineLearning_NeuralNetwork {
 		try {
 			br = new BufferedReader(new FileReader(csvFile));
 			while ((line = br.readLine()) != null) {
-				if (rowCounter >= lowTestBound && rowCounter < highTestBound) {
+				//Gets randomNum and if it is 4 (approx 1/6 chance) then we put in testing matrix
+				//If not then it goes in normal features matrix
+				randomNum = random.nextInt(6);
+				//Must be less than 299 testing rows, BUT ALSO must catch extra ones so rowCounter not greater than 1495
+				if (randomNum == 4 && (testingCounter < testingRows) || (rowCounter >= 1495)) {
 					// This is where we'll do stuff with the testing data
+					String[] recipes = line.split(",");
+					for (String ingr : recipes) {
+						if (ingredients.containsKey(ingr)) {
+							int index = ingredients.get(ingr);
+							//System.out.println("row: " + rowCounter + ", col: " + index);
+							testing[testingCounter][index] = 1;
+						}
+					}
+					testingCounter++;
 				} else {
 					String[] recipes = line.split(",");
 					rowCuisines[rowCounter] = recipes[1]; // Also, populate rowCuisines
@@ -195,9 +218,8 @@ public class MachineLearning_NeuralNetwork {
 							features[rowCounter][index] = 1;
 						}
 					}
+					rowCounter++;
 				}
-
-				rowCounter++;
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -220,6 +242,13 @@ public class MachineLearning_NeuralNetwork {
 		for (int row = 0; row < trainingRows; row++) {
 			for (int col = 0; col < ingrNum; col++) {
 				features[row][col] = 0;
+			}
+		}
+		
+		// init testing to all zeroes
+		for(int row = 0; row < testingRows; row++) {
+			for(int col = 0; col < ingrNum; col++) {
+				testing[row][col] = 0;
 			}
 		}
 	}
