@@ -21,6 +21,7 @@ public class MachineLearning_NeuralNetwork {
 	static int trainingRows = 1495;
 	static int ingrNum = 2398;
 	static int numPerceptrons = 10;
+	static double learningRate = 0.09;
 	
 	static double[][] features = new double[trainingRows][ingrNum];
 	static ArrayList<Perceptron> hiddenLayer = new ArrayList<Perceptron>();
@@ -52,6 +53,7 @@ public class MachineLearning_NeuralNetwork {
 		Matrix featureMatrix = new Matrix(features);
 		Matrix testRecipe = new Matrix(1, trainingRows, 0);
 		
+		//Iterating through each training row to "TEACH" our network
 		for (int i = 0; i < trainingRows; i++) {
 			// Get recipe for this row into matrix format to multiply
 			testRecipe = featureMatrix.getMatrix(i, i, 0, ingrNum - 1);
@@ -81,28 +83,67 @@ public class MachineLearning_NeuralNetwork {
 				Matrix output = sigmoidMatrix.times((outputWeight.transpose()));
 				String outputString = Arrays.deepToString(output.getArray());
 				outputLayer.get(k).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
-				//Come up with how we do outputs, must be passed into sigmoid as well
-				//[k] = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
-				System.out.println(outputLayer.get(k).output);
+				//Sigmoid Calculation
+				outputLayer.get(k).output = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
+				//System.out.println(outputLayer.get(k).output);
 				
 				//Populate each "0" value of correctOutput
 				correctOutput[k] = 0.1;
 			}
 			
+			
+			
 			//Put correct cuisine value into correctOutput as 0.9
 			correctOutput[cuisines.get(rowCuisines[i])] = 0.9;
+			
+			//Calculating for the delta output layer
+			calculateOutputDeltas(correctOutput);
+			
+			//Calculating the deltas for the hidden layer
+			calculateHiddenDeltas();
+			
+			//Now we are updating the weights for the output layer
+			for(int c = 0; c < 20; c++) {
+				for(int j = 0; j < numPerceptrons; j++) {
+					outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
+				}
+			}
+			
+			//Now we are updating the weights for the hidden layer
+			for(int h = 0; h < numPerceptrons; h++) {
+				for(int j = 0; j < ingrNum; j++) {
+					hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + hiddenLayer.get(h).delta * learningRate * features[i][j];
+				}
+			}
+			
+			
+			
+			
+			
 			
 			// System.out.println(Arrays.deepToString(testRecipe.getArray()));
 		}
 		
 	}
+
 	
 	
-	// Get the output values for the perceptrons
-	public static void getPerceptronOutput (Matrix recipe) {
-		
+	public static void calculateOutputDeltas(double[] correctOutput) {
+		for(int c = 0; c < 20; c++) {
+			double Ok = outputLayer.get(c).output;
+			outputLayer.get(c).delta = Ok * (1-Ok) * (correctOutput[c] - Ok);
+		}
 	}
 	
+	public static void calculateHiddenDeltas() {
+		for(int i = 0; i < numPerceptrons; i++) {
+			double sum = 0;
+			for(int j = 0; j < 20; j++) {
+				sum += outputLayer.get(i).weights[i] * outputLayer.get(i).delta;
+			}
+			hiddenLayer.get(i).delta = sigmoidOutputs[i] * (1-sigmoidOutputs[i]) * sum;
+		}
+	}
 	
 	
 	// Initialize 10 perceptrons for the hidden layer
@@ -217,10 +258,12 @@ public class MachineLearning_NeuralNetwork {
 	// These are the nodes in the hidden layer
 	public static class Perceptron {
 		double output; // This output will get passed to the sigmoid function
+		double delta;
 		double[] weights = new double[ingrNum];
 
 		public Perceptron() {
 			output = 0;
+			delta = 0;
 			Random rand = new Random();
 			for (int i = 0; i < ingrNum; i++) {
 				weights[i] = -.05 + rand.nextDouble() * .1; // Random num between -.05 and .05
@@ -232,10 +275,12 @@ public class MachineLearning_NeuralNetwork {
 	// Every perceptron in the hidden layer links to every OutputNode
 	public static class OutputNode {
 		double output; // This output will get passed to the sigmoid function
+		double delta;
 		double[] weights = new double[numPerceptrons];
 
 		public OutputNode() {
 			output = 0;
+			delta = 0;
 			Random rand = new Random();
 			for (int i = 0; i < numPerceptrons; i++) {
 				weights[i] = -.05 + rand.nextDouble() * .1; // Random num between -.05 and .05
