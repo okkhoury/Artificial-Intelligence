@@ -10,9 +10,10 @@ import java.util.Random;
 
 import Jama.Matrix;
 
-public class MachineLearning_Regression {
+public class MachineLearning_NeuralNetwork {
 
 	static Map<String, Integer> ingredients = new HashMap<String, Integer>();
+	static Map<String, Integer> cuisines = new HashMap<String, Integer>();
 	static int indexCounter = 0;
 	
 	// Rows = 5/6 of total data. This is the training set. the remaining is used for testing
@@ -26,6 +27,9 @@ public class MachineLearning_Regression {
 	static ArrayList<OutputNode> outputLayer = new ArrayList<OutputNode>();	// Each output is a cuisine
 	static double[] sigmoidOutputs = new double[numPerceptrons];
 	
+	// This array holds the type of cuisine for each row of our features matrix
+	static String[] rowCuisines = new String[trainingRows];	
+	
 	// bounds for the testing set
 	static int lowTestBound = 1495;
 	static int highTestBound= 1794;
@@ -37,7 +41,7 @@ public class MachineLearning_Regression {
 		// Initialize features matrix to all zeroes
 		initMatrixZero();
 		
-		// Run through recipes and set up values in features matrix
+		// Run through recipes and set up values in features matrix (1 if contains ingr, 0 otherwise)
 		initFeaturesMatrix();
 		
 		// Init the hidden layer and output layer with random weights
@@ -68,6 +72,7 @@ public class MachineLearning_Regression {
 			}
 
 			Matrix sigmoidMatrix = new Matrix(sigmoidOutputs, 1);
+			double[] correctOutput = new double[20];
 			
 			for (int k = 0; k < 20; k++) {
 				Matrix outputWeight = new Matrix(outputLayer.get(k).weights, 1);
@@ -76,8 +81,16 @@ public class MachineLearning_Regression {
 				Matrix output = sigmoidMatrix.times((outputWeight.transpose()));
 				String outputString = Arrays.deepToString(output.getArray());
 				outputLayer.get(k).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
+				//Come up with how we do outputs, must be passed into sigmoid as well
+				//[k] = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
 				System.out.println(outputLayer.get(k).output);
+				
+				//Populate each "0" value of correctOutput
+				correctOutput[k] = 0.1;
 			}
+			
+			//Put correct cuisine value into correctOutput as 0.9
+			correctOutput[cuisines.get(rowCuisines[i])] = 0.9;
 			
 			// System.out.println(Arrays.deepToString(testRecipe.getArray()));
 		}
@@ -107,12 +120,14 @@ public class MachineLearning_Regression {
 	}
 	
 	
+	// The rowCusines array is also set up in this function
 	public static void initFeaturesMatrix() {
 		String csvFile = "../HW4/src/training.csv";
 		BufferedReader br = null;
 		String line = "";
 		
 		int rowCounter = 0;
+		int cuisineCounter = 0;
 
 		/*
 		 *  If the hashmap contains the current ingredient, then look up where the index of that ingredient by doing
@@ -126,6 +141,12 @@ public class MachineLearning_Regression {
 					// This is where we'll do stuff with the testing data
 				} else {
 					String[] recipes = line.split(",");
+					rowCuisines[rowCounter] = recipes[1]; // Also, populate rowCuisines
+					if(!(cuisines.containsKey(recipes[1]))) {
+						cuisines.put(recipes[1], cuisineCounter);
+						cuisineCounter++;
+					}
+					
 					for (String ingr : recipes) {
 						if (ingredients.containsKey(ingr)) {
 							int index = ingredients.get(ingr);
