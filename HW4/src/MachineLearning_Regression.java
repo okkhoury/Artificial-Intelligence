@@ -2,9 +2,10 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import Jama.*;
+import java.util.Random;
 
 public class MachineLearning_Regression {
 
@@ -15,7 +16,11 @@ public class MachineLearning_Regression {
 	// Columns = # of features (ingredients)
 	static int trainingRows = 1495;
 	static int ingrNum = 2398;
+	static int numPerceptrons = 10;
+	
 	static int[][] features = new int[trainingRows][ingrNum];
+	static ArrayList<Perceptron> hiddenLayer = new ArrayList<Perceptron>();
+	static ArrayList<OutputNode> outputLayer = new ArrayList<OutputNode>();	// Each output is a cuisine
 	
 	// bounds for the testing set
 	static int lowTestBound = 1495;
@@ -31,6 +36,10 @@ public class MachineLearning_Regression {
 		// Run through recipes and set up values in features matrix
 		initFeaturesMatrix();
 		
+		// Init the hidden layer and output layer with random weights
+		initHiddenLayer();
+		initOutputLayer();
+		
 		for (int row = 0; row < 100; row++) {
 			for (int col = 0; col < 1000; col++) {
 				//features[row][col] = 0;
@@ -39,9 +48,22 @@ public class MachineLearning_Regression {
 			System.out.println();
 		}
 		
-		
 	}
 	
+	
+	// Initialize 10 perceptrons for the hidden layer
+	public static void initHiddenLayer() {
+		for (int i = 0; i < numPerceptrons; i++) {
+			hiddenLayer.add(new Perceptron());
+		}
+	}
+
+	// Initialize 20 perceptrons for the hidden layer
+	public static void initOutputLayer() {
+		for (int i = 0; i < 20; i++) {
+			outputLayer.add(new OutputNode());
+		}
+	}
 	
 	
 	public static void initFeaturesMatrix() {
@@ -129,6 +151,37 @@ public class MachineLearning_Regression {
 			}
 		}
 	}
+	
+	// These are the nodes in the hidden layer
+	public static class Perceptron {
+		float output; // This output will get passed to the sigmoid function
+		float[] weights = new float[ingrNum];
+
+		public Perceptron() {
+			output = 0;
+			Random rand = new Random();
+			for (int i = 0; i < ingrNum; i++) {
+				weights[i] = -.05f + rand.nextFloat() * .1f; // Random num between -.05 and .05
+			}
+		}
+	}
+	
+	
+	// Every perceptron in the hidden layer links to every OutputNode
+	public static class OutputNode {
+		float output; // This output will get passed to the sigmoid function
+		float[] weights = new float[numPerceptrons];
+
+		public OutputNode() {
+			output = 0;
+			Random rand = new Random();
+			for (int i = 0; i < numPerceptrons; i++) {
+				weights[i] = -.05f + rand.nextFloat() * .1f; // Random num between -.05 and .05
+			}
+		}
+	}
+	
+	
 	
 	
 
