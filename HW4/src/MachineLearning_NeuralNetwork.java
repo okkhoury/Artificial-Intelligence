@@ -25,12 +25,14 @@ public class MachineLearning_NeuralNetwork {
 	static int ingrNum = 2398;
 	static int numPerceptrons = 10;
 	static double learningRate = 0.09;
+	static double sumErrors = 0;
 	
 	static double[][] features = new double[trainingRows][ingrNum];
 	static double[][] testing = new double[testingRows][ingrNum];
 	static ArrayList<Perceptron> hiddenLayer = new ArrayList<Perceptron>();
 	static ArrayList<OutputNode> outputLayer = new ArrayList<OutputNode>();	// Each output is a cuisine
 	static double[] sigmoidOutputs = new double[numPerceptrons];
+	static double[] correctOutput = new double[20];
 	
 	// This array holds the type of cuisine for each row of our features matrix
 	static String[] rowCuisines = new String[trainingRows];	
@@ -58,87 +60,129 @@ public class MachineLearning_NeuralNetwork {
 		Matrix featureMatrix = new Matrix(features);
 		Matrix testRecipe = new Matrix(1, trainingRows, 0);
 		
-		//Iterating through each training row to "TEACH" our network
-		for (int i = 0; i < trainingRows; i++) {
-			// Get recipe for this row into matrix format to multiply
-			testRecipe = featureMatrix.getMatrix(i, i, 0, ingrNum - 1);
-
-			// For Each Perceptron, multiply their weights by the incoming
-			// recipe
-			for (int j = 0; j < numPerceptrons; j++) {
-				Matrix currentWeight = new Matrix(hiddenLayer.get(j).weights, 1);
-
-				// HiddenLayer output calculation
-				Matrix output = testRecipe.times((currentWeight.transpose()));
-				String outputString = Arrays.deepToString(output.getArray());
-				hiddenLayer.get(j).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
-
-				// Sigmoid Function from output
-				sigmoidOutputs[j] = 1 / (1 + Math.pow(Math.E, hiddenLayer.get(j).output));
+		for(int AGAIN = 0; AGAIN < 50; AGAIN++) {
+		
+			//Iterating through each training row to "TEACH" our network
+			for (int i = 0; i < trainingRows; i++) {
 				
-			}
-
-			Matrix sigmoidMatrix = new Matrix(sigmoidOutputs, 1);
-			double[] correctOutput = new double[20];
-			
-			for (int k = 0; k < 20; k++) {
-				Matrix outputWeight = new Matrix(outputLayer.get(k).weights, 1);
+				// Get recipe for this row into matrix format to multiply
+				testRecipe = featureMatrix.getMatrix(i, i, 0, ingrNum - 1);
 				
-				// HiddenLayer output calculation
-				Matrix output = sigmoidMatrix.times((outputWeight.transpose()));
-				String outputString = Arrays.deepToString(output.getArray());
-				outputLayer.get(k).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
-				//Sigmoid Calculation
-				outputLayer.get(k).output = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
-				//System.out.println(outputLayer.get(k).output);
+				//Forward Propogation
+				fowardPropogation(featureMatrix, testRecipe);
 				
-				//Populate each "0" value of correctOutput
-				correctOutput[k] = 0.1;
-			}
-			
-			
-			//Put correct cuisine value into correctOutput as 0.9
-			correctOutput[cuisines.get(rowCuisines[i])] = 0.9;
-			
-			//Calculating for the delta output layer
-			calculateOutputDeltas(correctOutput);
-			
-			//Calculating the deltas for the hidden layer
-			calculateHiddenDeltas();
-			
-			//Now we are updating the weights for the output layer
-			for(int c = 0; c < 20; c++) {
-				for(int j = 0; j < numPerceptrons; j++) {
-					outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + 
-							outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
+				//Put correct cuisine value into correctOutput as 0.9
+				correctOutput[cuisines.get(rowCuisines[i])] = 0.9;
+				
+				//Calculating for the delta output layer
+				calculateOutputDeltas(correctOutput);
+				
+				//Calculating the deltas for the hidden layer
+				calculateHiddenDeltas();
+				
+				//Now we are updating the weights for the output layer
+				for(int c = 0; c < 20; c++) {
+					for(int j = 0; j < numPerceptrons; j++) {
+						outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + 
+								outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
+					}
+				}
+				
+				//Now we are updating the weights for the hidden layer
+				for(int h = 0; h < numPerceptrons; h++) {
+					for(int j = 0; j < ingrNum; j++) {
+						hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + 
+								hiddenLayer.get(h).delta * learningRate * features[i][j];
+					}
 				}
 			}
-			
-			//Now we are updating the weights for the hidden layer
-			for(int h = 0; h < numPerceptrons; h++) {
-				for(int j = 0; j < ingrNum; j++) {
-					hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + 
-							hiddenLayer.get(h).delta * learningRate * features[i][j];
-				}
-			}
-			
-			// System.out.println(Arrays.deepToString(testRecipe.getArray()));
+			sumErrors /= trainingRows;
+			System.out.println("Output Error: " + sumErrors);
 		}
 		
+		
+		//Now we have trained the Neural Network... Lets Test!
+		int correctTests = testing();
+		System.out.println(correctTests);
 	}
 
+	public static int testing() {
+		Matrix fullMatrix = new Matrix(testing);
+		Matrix singleTestRecipe = new Matrix(1, testingRows, 0);
+		
+		int correctTests = 0;
+		
+		for(int i = 0; i < testingRows; i++) {
+			// Get recipe for this row into matrix format to multiply
+			singleTestRecipe = fullMatrix.getMatrix(i, i, 0, ingrNum - 1);
+			
+			//Forward Propogation
+			fowardPropogation(fullMatrix, singleTestRecipe);
+			
+			//Compare Outputs
+			int bestOption = -1;
+			double maxVal = 0;
+			for(int j = 0; j < 20; j++)  {
+				if(outputLayer.get(j).output > maxVal) {
+					bestOption = j;
+					maxVal = outputLayer.get(j).output;
+				}
+			}
+			
+			if(cuisines.get(testCuisines[i]) == bestOption) {
+				correctTests++;
+			}
+		}
+		return correctTests;
+	}
+	
+	
+	public static void fowardPropogation(Matrix featureMatrix, Matrix testRecipe) {
+
+		// For Each Perceptron, multiply their weights by the incoming recipe
+		for (int j = 0; j < numPerceptrons; j++) {
+			Matrix currentWeight = new Matrix(hiddenLayer.get(j).weights, 1);
+
+			// HiddenLayer output calculation
+			Matrix output = testRecipe.times((currentWeight.transpose()));
+			String outputString = Arrays.deepToString(output.getArray());
+			hiddenLayer.get(j).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
+
+			// Sigmoid Function from output
+			sigmoidOutputs[j] = 1 / (1 + Math.pow(Math.E, hiddenLayer.get(j).output));
+			
+		}
+
+		Matrix sigmoidMatrix = new Matrix(sigmoidOutputs, 1);
+		
+		for (int k = 0; k < 20; k++) {
+			Matrix outputWeight = new Matrix(outputLayer.get(k).weights, 1);
+			
+			// HiddenLayer output calculation
+			Matrix output = sigmoidMatrix.times((outputWeight.transpose()));
+			String outputString = Arrays.deepToString(output.getArray());
+			outputLayer.get(k).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
+			//Sigmoid Calculation
+			outputLayer.get(k).output = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
+			//System.out.println(outputLayer.get(k).output);
+			
+			//Populate each "0" value of correctOutput
+			correctOutput[k] = 0.1;
+		}
+	}
 	
 	
 	public static void calculateOutputDeltas(double[] correctOutput) {
 		for(int c = 0; c < 20; c++) {
 			double Ok = outputLayer.get(c).output;
 			// ERROR CALCULATION
-			totalError +=  Math.pow(correctOutput[c] - Ok, 2);
+			totalError += Math.pow(correctOutput[c] - Ok, 2);
 			outputLayer.get(c).delta = Ok * (1-Ok) * (correctOutput[c] - Ok);
 		}
 		
 		totalError /= 20;
-		System.out.println("Output Error: " + totalError);
+		sumErrors += totalError;
+		//System.out.println("Output Error: " + totalError);
 	}
 	
 	public static void calculateHiddenDeltas() {
@@ -300,7 +344,6 @@ public class MachineLearning_NeuralNetwork {
 		}
 	}
 	
-	
 	// Every perceptron in the hidden layer links to every OutputNode
 	public static class OutputNode {
 		double output; // This output will get passed to the sigmoid function
@@ -317,9 +360,5 @@ public class MachineLearning_NeuralNetwork {
 		}
 	}
 	
-	
-	
-	
-
 }
 
