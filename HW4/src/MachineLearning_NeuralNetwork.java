@@ -60,14 +60,15 @@ public class MachineLearning_NeuralNetwork {
 		Matrix featureMatrix = new Matrix(features);
 		Matrix testRecipe = new Matrix(1, trainingRows, 0);
 		
-		for(int AGAIN = 0; AGAIN < 50; AGAIN++) {
+		// Number of times we use the training set to test our system
+		for(int AGAIN = 0; AGAIN < 100; AGAIN++) {
 		
 			//Iterating through each training row to "TEACH" our network
 			for (int i = 0; i < trainingRows; i++) {
 				
 				// Get recipe for this row into matrix format to multiply
 				testRecipe = featureMatrix.getMatrix(i, i, 0, ingrNum - 1);
-				
+			
 				//Forward Propogation
 				fowardPropogation(featureMatrix, testRecipe);
 				
@@ -83,16 +84,14 @@ public class MachineLearning_NeuralNetwork {
 				//Now we are updating the weights for the output layer
 				for(int c = 0; c < 20; c++) {
 					for(int j = 0; j < numPerceptrons; j++) {
-						outputLayer.get(c).weights[j] = outputLayer.get(c).weights[j] + 
-								outputLayer.get(c).delta * learningRate * sigmoidOutputs[j];
+						outputLayer.get(c).weights[j] += outputLayer.get(c).delta * -1*learningRate * sigmoidOutputs[j];
 					}
 				}
 				
 				//Now we are updating the weights for the hidden layer
 				for(int h = 0; h < numPerceptrons; h++) {
 					for(int j = 0; j < ingrNum; j++) {
-						hiddenLayer.get(h).weights[j] = hiddenLayer.get(h).weights[j] + 
-								hiddenLayer.get(h).delta * learningRate * features[i][j];
+						hiddenLayer.get(h).weights[j] += hiddenLayer.get(h).delta * -1*learningRate * features[i][j];
 					}
 				}
 			}
@@ -164,11 +163,12 @@ public class MachineLearning_NeuralNetwork {
 			outputLayer.get(k).output = Double.parseDouble(outputString.substring(2, outputString.length() - 2));
 			//Sigmoid Calculation
 			outputLayer.get(k).output = 1 / (1 + Math.pow(Math.E, outputLayer.get(k).output));
-			//System.out.println(outputLayer.get(k).output);
+			System.out.println(outputLayer.get(k).output + "  ");
 			
 			//Populate each "0" value of correctOutput
 			correctOutput[k] = 0.1;
 		}
+		System.out.println();
 	}
 	
 	
@@ -180,7 +180,7 @@ public class MachineLearning_NeuralNetwork {
 			outputLayer.get(c).delta = Ok * (1-Ok) * (correctOutput[c] - Ok);
 		}
 		
-		totalError /= 20;
+		//totalError /= 20;
 		sumErrors += totalError;
 		//System.out.println("Output Error: " + totalError);
 	}
@@ -189,7 +189,7 @@ public class MachineLearning_NeuralNetwork {
 		for(int i = 0; i < numPerceptrons; i++) {
 			double sum = 0;
 			for(int j = 0; j < 20; j++) {
-				sum += outputLayer.get(i).weights[i] * outputLayer.get(i).delta;
+				sum += outputLayer.get(j).weights[i] * outputLayer.get(j).delta;
 			}
 			hiddenLayer.get(i).delta = sigmoidOutputs[i] * (1-sigmoidOutputs[i]) * sum;
 		}
@@ -239,6 +239,7 @@ public class MachineLearning_NeuralNetwork {
 				if (randomNum == 4 && (testingCounter < testingRows) || (rowCounter >= 1495)) {
 					// This is where we'll do stuff with the testing data
 					String[] recipes = line.split(",");
+					testCuisines[testingCounter] = recipes[1];
 					for (String ingr : recipes) {
 						if (ingredients.containsKey(ingr)) {
 							int index = ingredients.get(ingr);
