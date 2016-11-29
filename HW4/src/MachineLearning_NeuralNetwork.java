@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -22,10 +23,10 @@ public class MachineLearning_NeuralNetwork {
 	static int trainingRows = 1495;
 	static int testingRows = 299;
 	static int ingrNum = 2398;
-	static int numPerceptrons = 50;
+	static int numPerceptrons = 10;
 	static int numOutput = 20;
 
-	static double learningRate = 0.2;
+	static double learningRate = 0.09;
 	static double sumErrors = 0;
 	static double trainingCorrect = 0;
 
@@ -60,6 +61,9 @@ public class MachineLearning_NeuralNetwork {
 		// Run through recipes and set up values in features matrix (1 if
 		// contains ingr, 0 otherwise)
 		initFeaturesMatrix();
+		
+		//Shuffle!
+		
 
 		// Init the hidden layer and output layer with random weights
 		initHiddenLayer();
@@ -70,25 +74,22 @@ public class MachineLearning_NeuralNetwork {
 		Matrix testRecipe = new Matrix(1, trainingRows, 0);
 
 		// Number of times we use the training set to test our system
-		for (int AGAIN = 0; AGAIN < 50; AGAIN++) {
+		for (int AGAIN = 0; AGAIN < 1000; AGAIN++) {
 
 			// Reset sumErrors
 			sumErrors = 0;
 			trainingCorrect = 0;
-			
-//			for (int n = 0; n<20; n++) {
-//				//System.out.println(outputLayer.get(n).weights.toString());
-//				for (double x : outputLayer.get(n).weights) {
-//					System.out.print(x);
-//				}
-//				System.out.println();
-//			}
-//			System.out.println();
-			
 
+			ArrayList<Integer> randNums = new ArrayList<Integer>();
 			// Iterating through each training row to "TEACH" our network
 			for (int i = 0; i < trainingRows; i++) {
-
+				randNums.add(i);
+			}
+			Collections.shuffle(randNums);
+			int i = 0;
+			while (!randNums.isEmpty()) {
+				i = randNums.remove(randNums.size()-1);
+		
 				// Get recipe for this row into matrix format to multiply
 				testRecipe = featureMatrix.getMatrix(i, i, 0, ingrNum);
 
